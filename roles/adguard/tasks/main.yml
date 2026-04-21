@@ -1,0 +1,88 @@
+---
+# Role requirements (derived from audit/container-state.md — LXC 100):
+# 1. Install AdGuardHome binary (idempotent: check version before re-downloading)
+# 2. Create /etc/systemd/system/AdGuardHome.service unit file
+# 3. Enable and start AdGuardHome.service
+# 4. alloy + wazuh-agent handled by their respective cross-cutting roles
+
+- name: Create adguard system user
+  ansible.builtin.user:
+    name: "{{ adguard_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ adguard_install_dir }}"
+    create_home: false
+
+- name: Ensure AdGuardHome install directory exists
+  ansible.builtin.file:
+    path: "{{ adguard_install_dir }}"
+    state: directory
+    owner: "{{ adguard_user }}"
+    group: "{{ adguard_group }}"
+    mode: "0755"
+
+- name: Check AdGuardHome installed version
+  ansible.builtin.command: "{{ adguard_binary }} --version"
+  register: adguard_installed_version
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Download AdGuardHome tarball
+  ansible.builtin.get_url:
+    url: "{{ adguard_download_url }}"
+    dest: "{{ adguard_tmp_tar }}"
+    mode: "0644"
+  when: >
+    adguard_installed_version.rc != 0 or
+    adguard_version not in adguard_installed_version.stdout
+
+- name: Extract AdGuardHome binary
+  ansible.builtin.unarchive:
+    src: "{{ adguard_tmp_tar }}"
+    dest: /tmp
+    remote_src: true
+  when: >
+    adguard_installed_version.rc != 0 or
+    adguard_version not in adguard_installed_version.stdout
+
+- name: Install AdGuardHome binary
+  ansible.builtin.copy:
+    src: /tmp/AdGuardHome/AdGuardHome
+    dest: "{{ adguard_binary }}"
+    owner: "{{ adguard_user }}"
+    group: "{{ adguard_group }}"
+    mode: "0755"
+    remote_src: true
+  when: >
+    adguard_installed_version.rc != 0 or
+    adguard_version not in adguard_installed_version.stdout
+  notify: restart adguard
+
+- name: Set ownership on AdGuardHome install directory
+  ansible.builtin.file:
+    path: "{{ adguard_install_dir }}"
+    owner: "{{ adguard_user }}"
+    group: "{{ adguard_group }}"
+    recurse: true
+
+- name: Deploy AdGuardHome systemd unit
+  ansible.builtin.template:
+    src: AdGuardHome.service.j2
+    dest: /etc/systemd/system/AdGuardHome.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart adguard
+
+- name: Enable and start AdGuardHome service
+  ansible.builtin.systemd:
+    name: AdGuardHome
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Clean up downloaded tarball
+  ansible.builtin.file:
+    path: "{{ adguard_tmp_tar }}"
+    state: absent
