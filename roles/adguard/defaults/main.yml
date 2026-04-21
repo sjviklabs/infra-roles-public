@@ -1,0 +1,14 @@
+---
+# AdGuard Home version and install paths
+adguard_version: "0.107.73"
+adguard_install_dir: /opt/AdGuardHome
+adguard_binary: "{{ adguard_install_dir }}/AdGuardHome"
+adguard_user: adguard
+adguard_group: adguard
+
+# Download URL for AdGuardHome binary tarball
+adguard_download_url: "https://github.com/AdguardTeam/AdGuardHome/releases/download/v{{ adguard_version }}/AdGuardHome_linux_amd64.tar.gz"
+adguard_tmp_tar: "/tmp/AdGuardHome_linux_amd64.tar.gz"
+
+# Config file — DO NOT template; managed with live state via AdGuard Home web UI
+adguard_config_file: "{{ adguard_install_dir }}/AdGuardHome.yaml"
