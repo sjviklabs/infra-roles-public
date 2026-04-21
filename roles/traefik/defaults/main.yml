@@ -1,0 +1,25 @@
+---
+# Traefik version and install paths
+# Binary install from GitHub releases (NOT Debian traefik package — that's an older version)
+traefik_version: "3.3.4"
+traefik_binary: /usr/local/bin/traefik
+traefik_config_dir: /etc/traefik
+traefik_user: traefik
+traefik_group: traefik
+
+traefik_download_url: "https://github.com/traefik/traefik/releases/download/v{{ traefik_version }}/traefik_v{{ traefik_version }}_linux_amd64.tar.gz"
+traefik_tmp_tar: "/tmp/traefik_v{{ traefik_version }}_linux_amd64.tar.gz"
+
+# Tailscale (subnet router for LXC 104)
+# Auth key is session-scoped — this role installs the daemon only; run "tailscale up" manually
+tailscale_repo_url: "https://pkgs.tailscale.com/stable/debian bookworm main"
+tailscale_repo_gpg_url: "https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg"
+
+# mkcert for local TLS certificates
+mkcert_version: "1.4.4"
+mkcert_binary: /usr/local/bin/mkcert
+mkcert_download_url: "https://github.com/FiloSottile/mkcert/releases/download/v{{ mkcert_version }}/mkcert-v{{ mkcert_version }}-linux-amd64"
+
+# Traefik config — DO NOT template; routing rules and TLS config have live state
+# Role only verifies the config file exists (stat assert); manual creation required on new installs
+traefik_config_file: "{{ traefik_config_dir }}/traefik.yml"
