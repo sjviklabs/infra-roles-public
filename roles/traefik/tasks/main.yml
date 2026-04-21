@@ -1,0 +1,147 @@
+---
+# Role requirements (derived from audit/container-state.md — LXC 104):
+# 1. Download traefik binary from GitHub releases (version-gated)
+# 2. Install Tailscale (subnet router — auth is manual post-deploy step)
+# 3. Assert traefik config directory and config file exist (do NOT template — live routing rules)
+# 4. Deploy /etc/systemd/system/traefik.service
+# 5. Enable and start traefik.service and tailscaled.service
+# NOTE: mkcert is used for local TLS; install binary only (cert generation is manual)
+
+# ─── Traefik system user ─────────────────────────────────────────────────────
+- name: Create traefik system group
+  ansible.builtin.group:
+    name: "{{ traefik_group }}"
+    system: true
+
+- name: Create traefik system user
+  ansible.builtin.user:
+    name: "{{ traefik_user }}"
+    group: "{{ traefik_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ traefik_config_dir }}"
+    create_home: false
+
+# ─── Traefik binary (stat-gated) ─────────────────────────────────────────────
+- name: Check traefik installed version
+  ansible.builtin.command: "{{ traefik_binary }} version"
+  register: traefik_installed_version
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Download traefik tarball
+  ansible.builtin.get_url:
+    url: "{{ traefik_download_url }}"
+    dest: "{{ traefik_tmp_tar }}"
+    mode: "0644"
+  when: >
+    traefik_installed_version.rc != 0 or
+    traefik_version not in traefik_installed_version.stdout
+
+- name: Extract traefik binary from tarball
+  ansible.builtin.unarchive:
+    src: "{{ traefik_tmp_tar }}"
+    dest: /usr/local/bin
+    remote_src: true
+    include:
+      - traefik
+  when: >
+    not ansible_check_mode and
+    (traefik_installed_version.rc != 0 or
+    traefik_version not in traefik_installed_version.stdout)
+  notify: restart traefik
+
+- name: Set traefik binary permissions
+  ansible.builtin.file:
+    path: "{{ traefik_binary }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Clean up traefik tarball
+  ansible.builtin.file:
+    path: "{{ traefik_tmp_tar }}"
+    state: absent
+
+# ─── mkcert binary (stat-gated) ──────────────────────────────────────────────
+- name: Check mkcert binary exists
+  ansible.builtin.stat:
+    path: "{{ mkcert_binary }}"
+  register: mkcert_stat
+
+- name: Download mkcert binary
+  ansible.builtin.get_url:
+    url: "{{ mkcert_download_url }}"
+    dest: "{{ mkcert_binary }}"
+    mode: "0755"
+  when: not mkcert_stat.stat.exists
+
+# ─── Traefik config directory ─────────────────────────────────────────────────
+- name: Ensure traefik config directory exists
+  ansible.builtin.file:
+    path: "{{ traefik_config_dir }}"
+    state: directory
+    owner: "{{ traefik_user }}"
+    group: "{{ traefik_group }}"
+    mode: "0755"
+
+- name: Assert traefik.yml config file exists (not templated — live routing state)
+  ansible.builtin.stat:
+    path: "{{ traefik_config_file }}"
+  register: traefik_config_stat
+  failed_when: false
+
+- name: Warn if traefik.yml does not exist (manual creation required on new installs)
+  ansible.builtin.debug:
+    msg: "WARNING: {{ traefik_config_file }} does not exist. Create it manually before starting traefik."
+  when: not traefik_config_stat.stat.exists
+
+# ─── Tailscale ───────────────────────────────────────────────────────────────
+- name: Create apt keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add Tailscale GPG key
+  ansible.builtin.get_url:
+    url: "{{ tailscale_repo_gpg_url }}"
+    dest: /etc/apt/keyrings/tailscale.gpg
+    mode: "0644"
+
+- name: Add Tailscale apt repo
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/tailscale.gpg] {{ tailscale_repo_url }}"
+    state: present
+    filename: tailscale
+
+- name: Install Tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: true
+
+# ─── Systemd units ───────────────────────────────────────────────────────────
+- name: Deploy traefik systemd unit
+  ansible.builtin.template:
+    src: traefik.service.j2
+    dest: /etc/systemd/system/traefik.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart traefik
+
+- name: Enable and start traefik service
+  ansible.builtin.systemd:
+    name: traefik
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable and start tailscaled service
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: true
+    state: started
+    daemon_reload: true
