@@ -4,7 +4,7 @@ The Ansible roles I run on my 3-node Proxmox cluster. Three of them, anyway. The
 
 `node_exporter` for Prometheus metrics, `adguard` for DNS blocking, `traefik` for reverse proxy. The versions I actually run, pinned to the upstream releases I tested against.
 
-> Companion repos: [`sjviklabs/infra-docs`](https://github.com/sjviklabs/infra-docs) for runbooks and the change log, [`sjviklabs/noc-planning`](https://github.com/sjviklabs/noc-planning) for the GSD phase plans.
+> Companion repos (private): `sjviklabs/infra-docs` for runbooks and the change log, `sjviklabs/noc-planning` for the GSD phase plans.
 
 ## Roles
 
