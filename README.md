@@ -53,7 +53,8 @@ roles_path = /path/to/infra-roles-public/roles
 
 ## Tested on
 
-- Debian 12 (Bookworm) LXC containers on Proxmox 8.x
+- Debian 12 (Bookworm) LXC containers
+- Proxmox VE 9.1.6 (originally developed against 8.x; running on 9.x since)
 - Ansible 2.17+
 
 ## What this isn't
