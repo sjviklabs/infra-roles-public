@@ -60,6 +60,15 @@ roles_path = /path/to/infra-roles-public/roles
 
 A general-purpose role library. These three roles do exactly what I need them to do on my hardware. If you run a different distro or a different Proxmox version they'll probably still work, but I haven't tested it and I won't promise.
 
+## Related
+
+These roles come out of one working cluster. The build guides for that cluster —
+the base Proxmox build, Traefik + TLS, PBS backups, the monitoring stack, Wazuh —
+are at [sjviklabs.com](https://sjviklabs.com/?utm_source=github&utm_medium=referral&utm_campaign=proxmox_homelab&utm_content=repo_readme#infrastructure).
+
+The roles here are MIT and complete on their own. The guides are the write-up,
+not a paywall around them.
+
 ## License
 
 MIT. If a role saves you an afternoon, that's the point.
