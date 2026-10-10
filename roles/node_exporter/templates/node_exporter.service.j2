@@ -12,5 +12,16 @@ ExecStart={{ node_exporter_install_dir }}/node_exporter \
 Restart=on-failure
 RestartSec=5
 
+# Sandboxing. node_exporter only reads /proc and /sys; it writes nothing.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+
 [Install]
 WantedBy=multi-user.target
