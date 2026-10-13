@@ -1,14 +1,18 @@
 ---
 # AdGuard Home version and install paths
 adguard_version: "0.107.73"
+# Working directory (config + data) is writable by the service user. The binary
+# lives outside it, root-owned, so a compromised AdGuard cannot replace itself.
 adguard_install_dir: /opt/AdGuardHome
-adguard_binary: "{{ adguard_install_dir }}/AdGuardHome"
+adguard_binary: /usr/local/bin/AdGuardHome
 adguard_user: adguard
 adguard_group: adguard
 
 # Download URL for AdGuardHome binary tarball
 adguard_download_url: "https://github.com/AdguardTeam/AdGuardHome/releases/download/v{{ adguard_version }}/AdGuardHome_linux_amd64.tar.gz"
-adguard_tmp_tar: "/tmp/AdGuardHome_linux_amd64.tar.gz"
+# SHA-256 of the tarball above. Change it WITH adguard_version: copy the
+# AdGuardHome_linux_amd64.tar.gz line from checksums.txt on the release page.
+adguard_checksum: "sha256:bf61a592ce8edeb38b3aff19033a90e704f733cb08114fa52730584a52727ee4"
 
 # Config file — DO NOT template; managed with live state via AdGuard Home web UI
 adguard_config_file: "{{ adguard_install_dir }}/AdGuardHome.yaml"

@@ -28,43 +28,53 @@
   failed_when: false
   check_mode: false
 
-- name: Download AdGuardHome tarball
-  ansible.builtin.get_url:
-    url: "{{ adguard_download_url }}"
-    dest: "{{ adguard_tmp_tar }}"
-    mode: "0644"
+# Private, unpredictable download dir: a fixed /tmp path lets another local
+# user pre-plant or swap the archive before root installs it.
+- name: Create private download directory
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: adguard
+  register: adguard_tmp
   when: >
     adguard_installed_version.rc != 0 or
     adguard_version not in adguard_installed_version.stdout
+
+- name: Download AdGuardHome tarball (checksum-verified)
+  ansible.builtin.get_url:
+    url: "{{ adguard_download_url }}"
+    dest: "{{ adguard_tmp.path }}/AdGuardHome.tar.gz"
+    checksum: "{{ adguard_checksum }}"
+    mode: "0600"
+  when: adguard_tmp.path is defined
 
 - name: Extract AdGuardHome binary
   ansible.builtin.unarchive:
-    src: "{{ adguard_tmp_tar }}"
-    dest: /tmp
+    src: "{{ adguard_tmp.path }}/AdGuardHome.tar.gz"
+    dest: "{{ adguard_tmp.path }}"
     remote_src: true
-  when: >
-    adguard_installed_version.rc != 0 or
-    adguard_version not in adguard_installed_version.stdout
+  when: not ansible_check_mode and adguard_tmp.path is defined
 
+# Root-owned and outside the service's writable working directory, so the
+# service account can neither modify nor replace it.
 - name: Install AdGuardHome binary
   ansible.builtin.copy:
-    src: /tmp/AdGuardHome/AdGuardHome
+    src: "{{ adguard_tmp.path }}/AdGuardHome/AdGuardHome"
     dest: "{{ adguard_binary }}"
-    owner: "{{ adguard_user }}"
-    group: "{{ adguard_group }}"
+    owner: root
+    group: root
     mode: "0755"
     remote_src: true
-  when: >
-    adguard_installed_version.rc != 0 or
-    adguard_version not in adguard_installed_version.stdout
+  when: not ansible_check_mode and adguard_tmp.path is defined
   notify: restart adguard
 
-- name: Set ownership on AdGuardHome install directory
+# Earlier versions of this role installed a service-owned binary inside the
+# working directory. Remove it so nothing can start the writable copy.
+- name: Remove legacy in-place AdGuardHome binary
   ansible.builtin.file:
-    path: "{{ adguard_install_dir }}"
-    owner: "{{ adguard_user }}"
-    group: "{{ adguard_group }}"
-    recurse: true
+    path: "{{ adguard_install_dir }}/AdGuardHome"
+    state: absent
+  when: adguard_binary != adguard_install_dir ~ '/AdGuardHome'
+  notify: restart adguard
 
 - name: Deploy AdGuardHome systemd unit
   ansible.builtin.template:
@@ -82,7 +92,8 @@
     state: started
     daemon_reload: true
 
-- name: Clean up downloaded tarball
+- name: Remove download directory
   ansible.builtin.file:
-    path: "{{ adguard_tmp_tar }}"
+    path: "{{ adguard_tmp.path }}"
     state: absent
+  when: adguard_tmp.path is defined

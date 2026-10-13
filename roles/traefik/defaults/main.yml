@@ -8,7 +8,9 @@ traefik_user: traefik
 traefik_group: traefik
 
 traefik_download_url: "https://github.com/traefik/traefik/releases/download/v{{ traefik_version }}/traefik_v{{ traefik_version }}_linux_amd64.tar.gz"
-traefik_tmp_tar: "/tmp/traefik_v{{ traefik_version }}_linux_amd64.tar.gz"
+# SHA-256 of the tarball above. Change it WITH traefik_version: copy the
+# linux_amd64 line from traefik_v<version>_checksums.txt on the release page.
+traefik_checksum: "sha256:b7064553cbde78a566c014e0b0e8e63212eff39a8caeddad8e38a9b19341a196"
 
 # Tailscale (subnet router for LXC 104)
 # Auth key is session-scoped — this role installs the daemon only; run "tailscale up" manually
@@ -19,6 +21,8 @@ tailscale_repo_gpg_url: "https://pkgs.tailscale.com/stable/debian/bookworm.noarm
 mkcert_version: "1.4.4"
 mkcert_binary: /usr/local/bin/mkcert
 mkcert_download_url: "https://github.com/FiloSottile/mkcert/releases/download/v{{ mkcert_version }}/mkcert-v{{ mkcert_version }}-linux-amd64"
+# mkcert publishes no checksum file; this is sha256sum of the v1.4.4 binary.
+mkcert_checksum: "sha256:6d31c65b03972c6dc4a14ab429f2928300518b26503f58723e532d1b0a3bbb52"
 
 # Traefik config — DO NOT template; routing rules and TLS config have live state
 # Role only verifies the config file exists (stat assert); manual creation required on new installs
